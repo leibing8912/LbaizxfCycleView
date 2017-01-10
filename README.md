@@ -1,5 +1,8 @@
 # LbaizxfCycleView
-一个基于Rxjava + ViewPaper实现的图片轮播器,能自定义指示器,能自定义是否轮播、是否循环等.
+一个基于Handler + ViewPaper实现的图片轮播器,能自定义指示器,能自定义是否轮播、是否循环等.
+
+### 效果图
+![LbaizxfCycleView.gif](http://upload-images.jianshu.io/upload_images/2412932-6cbeabe861d7582e.gif?imageMogr2/auto-orient/strip)
 
 ### 特性
 * 支持指示器显示方式（靠左、居中、靠右）自定义
@@ -11,6 +14,9 @@
 * 支持设置轮播间隔时间
 * 支持onClick监听事件
 
+### 版本
+* v1.0.1 基于Rxjava + ViewPager实现图片轮播；
+* v1.0.2 改版成基于Handler + ViewPager实现图片轮播（Rxjava存在内存泄漏问题，放弃Rxjava定时轮播功能），修复只有一张轮播图时item Onclick Bug。
 
 ### Usage
 
@@ -20,18 +26,18 @@ Maven:
 <dependency>
   <groupId>cn.jianke.lbaizxfcycleview</groupId>
   <artifactId>app</artifactId>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
   <type>pom</type>
 </dependency>
 ```
 Gradle:
 ```javascript
-compile 'cn.jianke.lbaizxfcycleview:app:1.0.1'
+compile 'cn.jianke.lbaizxfcycleview:app:1.0.2'
 ```
 
 Ivy:
 ```javascript
-<dependency org='cn.jianke.lbaizxfcycleview' name='app' rev='1.0.1'>
+<dependency org='cn.jianke.lbaizxfcycleview' name='app' rev='1.0.2'>
   <artifact name='$AID' ext='pom'></artifact>
 </dependency>
 ```
@@ -77,9 +83,10 @@ public class MainActivity extends AppCompatActivity {
         // 设置为有轮播功能
         lbaizxfCvw.setIsHasWheel(true);
         // 设置数据源并设置监听
-        lbaizxfCvw.setData(mData, new CycleView.CycleViewListener() {
+        lbaizxfCvw.setData(mData, MainActivity.this,new CycleView.CycleViewListener() {
             @Override
             public void onItemClick(int position) {
+                position = position + 1;
                 Toast.makeText(MainActivity.this, "这是第" + position + "个图",
                         Toast.LENGTH_SHORT).show();
             }
