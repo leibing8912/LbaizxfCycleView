@@ -2,6 +2,7 @@ package cn.jianke.lbaizxfcycleview.widget;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
+import android.os.Handler;
 import android.support.v4.view.ViewPager;
 import android.util.AttributeSet;
 import android.view.Gravity;
@@ -15,16 +16,10 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import cn.jianke.lbaizxfcycleview.R;
 import cn.jianke.lbaizxfcycleview.adapter.CycleViewAdapter;
 import cn.jianke.lbaizxfcycleview.model.CycleModel;
 import cn.jianke.lbaizxfcycleview.utils.ImageLoader;
-import rx.Observable;
-import rx.Subscription;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.functions.Action1;
-import rx.schedulers.Schedulers;
 
 /**
  * @className: CycleView
@@ -65,8 +60,21 @@ public class CycleView extends FrameLayout implements ViewPager.OnPageChangeList
     private CycleViewAdapter mAdapter;
     // 轮播view默认占位图
     private Drawable defaultImage = getResources().getDrawable(R.drawable.default_holder);
-    // 轮播订阅
-    private Subscription mSubscription;
+    // 自定义Handler，用于控制轮播 add by leibing 2016/11/19
+    private Handler mHandler = new Handler();
+    // 轮播执行器 add by leibing 2016/11/19
+    private Runnable cycleRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isWheel && isHasWheel) {
+                mCurrentPosition++;
+                if (mViewPager != null)
+                    mViewPager.setCurrentItem(mCurrentPosition, false);
+            }
+            if (mHandler != null)
+                mHandler.postDelayed(cycleRunnable, delay);
+        }
+    };
 
     public CycleView(Context context) {
         this(context, null);
@@ -165,11 +173,12 @@ public class CycleView extends FrameLayout implements ViewPager.OnPageChangeList
      * @createTime 2016/09/20
      * @lastModify 2016/09/20
      * @param mData 数据源
+     * @param context 上下文
      * @param listener 轮播监听
      * @return
      */
-    public void setData(List<CycleModel> mData , CycleViewListener listener){
-        setData(mData, 0, defaultImage, listener);
+    public void setData(List<CycleModel> mData , Context context,CycleViewListener listener){
+        setData(mData, 0, context, defaultImage, listener);
     }
 
     /**
@@ -179,11 +188,13 @@ public class CycleView extends FrameLayout implements ViewPager.OnPageChangeList
      * @lastModify 2016/09/20
      * @param mData 数据源
      * @param defaultImage 默认占位图（图片未加载出来前）
+     * @param context 上下文
      * @param listener 轮播监听
      * @return
      */
-    public void setData(List<CycleModel> mData , Drawable defaultImage, CycleViewListener listener){
-        setData(mData, 0, defaultImage, listener);
+    public void setData(List<CycleModel> mData ,
+                        Drawable defaultImage,Context context, CycleViewListener listener){
+        setData(mData, 0, context, defaultImage, listener);
     }
 
     /**
@@ -193,12 +204,16 @@ public class CycleView extends FrameLayout implements ViewPager.OnPageChangeList
      * @lastModify 2016/09/20
      * @param mData 轮播view数据源
      * @param defaultPosition 默认显示位置
+     * @param context 上下文
      * @param defaultImage 默认占位图（图片未加载出来前）
      * @param listener 轮播监听
      * @return
      */
-    public void setData(List<CycleModel> mData, int defaultPosition,
+    public void setData(List<CycleModel> mData, int defaultPosition,Context context,
                         Drawable defaultImage, CycleViewListener listener){
+        // 若上下文为空则返回
+        if (context == null)
+            return;
         // 设置轮播view数据源
         this.mData = mData;
         // 如果数据源不存在或者其大小为0则设置当前布局为不可见
@@ -219,16 +234,16 @@ public class CycleView extends FrameLayout implements ViewPager.OnPageChangeList
         if (isCycle) {
             // 添加轮播图View，数量为集合数+2
             // 将最后一个View添加进来
-            mViews.add(getCycleView(getContext(), mData.get(size - 1).getUrl(), defaultImage));
+            mViews.add(getCycleView(context, mData.get(size - 1).getUrl(), defaultImage));
             for (int i = 0; i < size; i++) {
-                mViews.add(getCycleView(getContext(), mData.get(i).getUrl(), defaultImage));
+                mViews.add(getCycleView(context, mData.get(i).getUrl(), defaultImage));
             }
             // 将第一个View添加进来
-            mViews.add(getCycleView(getContext() , mData.get(0).getUrl(), defaultImage));
+            mViews.add(getCycleView(context , mData.get(0).getUrl(), defaultImage));
         } else {
             // 只添加对应数量的View
             for (int i = 0; i < size; i++) {
-                mViews.add(getCycleView(getContext(), mData.get(i).getUrl(), defaultImage));
+                mViews.add(getCycleView(context, mData.get(i).getUrl(), defaultImage));
             }
         }
         // 设置轮播监听
@@ -239,8 +254,6 @@ public class CycleView extends FrameLayout implements ViewPager.OnPageChangeList
         setIndicator(defaultPosition);
         // 设置适配器
         setAdapter(mViews, cycleViewListener, size);
-        // 如果已经开始轮播订阅，则取消轮播订阅
-        cancelSubscription();
         // 开始轮播
         startWheel(size);
     }
@@ -353,14 +366,10 @@ public class CycleView extends FrameLayout implements ViewPager.OnPageChangeList
                 RelativeLayout.LayoutParams.MATCH_PARENT,
                 RelativeLayout.LayoutParams.MATCH_PARENT);
         imageView.setLayoutParams(layoutParams);
+        imageView.setScaleType(ImageView.ScaleType.FIT_XY);
         // 加载图片资源
-        ImageLoader.load(context,imageView, url, defaultImage);
-        // 在Imageview前添加一个半透明的黑色背景，防止文字和图片混在一起
-        ImageView backGround = new ImageView(context);
-        backGround.setLayoutParams(layoutParams);
-        backGround.setBackgroundResource(R.color.cycle_image_bg);
+        ImageLoader.load(context,imageView, url, defaultImage, defaultImage, false);
         mRelativeLayout.addView(imageView);
-        mRelativeLayout.addView(backGround);
         return mRelativeLayout;
     }
 
@@ -470,32 +479,25 @@ public class CycleView extends FrameLayout implements ViewPager.OnPageChangeList
         // 设置轮播
         setWheel(true);
         // 开始轮播
-        mSubscription = Observable.interval(delay, TimeUnit.MILLISECONDS)
-                .subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Action1<Long>() {
-                    @Override
-                    public void call(Long aLong) {
-                        if (isWheel && isHasWheel) {
-                            mCurrentPosition++;
-                            if (mViewPager != null)
-                                mViewPager.setCurrentItem(mCurrentPosition, false);
-                        }
-                    }
-                });
+        if (mHandler == null)
+            mHandler = new Handler();
+        if (cycleRunnable != null){
+            mHandler.post(cycleRunnable);
+        }
     }
 
     /**
-     * 取消轮播订阅
+     * 取消轮播
      * @author leibing
      * @createTime 2016/09/22
      * @lastModify 2016/09/22
      * @param
      * @return
      */
-    public void cancelSubscription(){
-        if (mSubscription != null){
-            mSubscription.unsubscribe();
-            mSubscription = null;
+    public void cancelWheel(){
+        if (mHandler != null) {
+            mHandler.removeCallbacks(cycleRunnable);
+            mHandler = null;
         }
     }
 
@@ -530,10 +532,16 @@ public class CycleView extends FrameLayout implements ViewPager.OnPageChangeList
             case MotionEvent.ACTION_DOWN:
                 // 手指按下或者滑动的过程中停止轮播
                 setWheel(false);
+                cancelWheel();
                 break;
             case MotionEvent.ACTION_UP:
                 // 手指离开屏幕开始轮播
                 setWheel(true);
+                if (mHandler == null)
+                    mHandler = new Handler();
+                if (cycleRunnable != null){
+                    mHandler.postDelayed(cycleRunnable, delay);
+                }
                 break;
         }
         return super.dispatchTouchEvent(ev);

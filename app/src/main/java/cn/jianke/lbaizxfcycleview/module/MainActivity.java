@@ -45,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
         // 设置为有轮播功能
         adsCycleView.setIsHasWheel(true);
         // 设置数据源并设置监听
-        adsCycleView.setData(mData, new CycleView.CycleViewListener() {
+        adsCycleView.setData(mData, MainActivity.this, new CycleView.CycleViewListener() {
             @Override
             public void onItemClick(int position) {
                 Toast.makeText(MainActivity.this, "这是第" + position + "个图",

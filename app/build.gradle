@@ -26,7 +26,4 @@ dependencies {
     // 图片加载库采用Glide框架
     compile 'com.github.bumptech.glide:glide:3.7.0'
     compile 'jp.wasabeef:glide-transformations:2.0.1'
-    // rxjava + rxandroid
-    compile 'io.reactivex:rxjava:1.0.14'
-    compile 'io.reactivex:rxandroid:1.0.1'
 }
