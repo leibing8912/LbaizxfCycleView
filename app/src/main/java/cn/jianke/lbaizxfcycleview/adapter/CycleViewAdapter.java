@@ -62,6 +62,9 @@ public class CycleViewAdapter extends PagerAdapter{
                     // 处理极端情况，此情况出现在轮播最后一张图切换到第一张图，ViewPaper实现轮播原理决定的。
                     if (vPosition > size)
                         vPosition = vPosition % size;
+                    vPosition --;
+                    if (vPosition < 0)
+                        vPosition = 0;
                     cycleViewListener.onItemClick(vPosition);
                 }
             });

@@ -48,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
         adsCycleView.setData(mData, MainActivity.this, new CycleView.CycleViewListener() {
             @Override
             public void onItemClick(int position) {
+                position = position + 1;
                 Toast.makeText(MainActivity.this, "这是第" + position + "个图",
                         Toast.LENGTH_SHORT).show();
             }
